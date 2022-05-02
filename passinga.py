@@ -43,17 +43,18 @@ def post_status(ic_url, user, pw, hostname, verify_ssl, checkopts):
             "plugin_output": checkopts.exitoutput,
         }
     )
-    logger.debug(postdata)
-    logger.debug(headers)
+    logger.debug('Postdata: ' + postdata)
+    logger.debug('Headers: ' + str(headers))
     resp = http.request("POST", url, headers=headers, body=postdata)
-    logger.debug(resp.data)
-    return resp.data
+    logger.debug('Response: ' + str(resp.data))
+    return resp.status, json.loads(resp.data)
 
 
 def readconf():
     """read config file"""
     config = ConfigParser.ConfigParser()
     config.read(["/etc/passinga", os.path.expanduser("~/.config/.passinga")])
+    logger.debug('Conf: ' + str(dict(config.items('Main'))))
     return (
         config.get("Main", "icinga_url"),
         config.get("Main", "username"),
@@ -86,8 +87,13 @@ def main():
         logger.setLevel(logging.ERROR)
     checkopts = get_options()
     (icinga_url, username, password, hostname, verify_ssl) = readconf()
-    data = post_status(icinga_url, username, password, hostname, verify_ssl, checkopts)
-    rc = 0
+    status, response = post_status(icinga_url, username, password, hostname, verify_ssl, checkopts)
+    logger.debug("Status: %s   Response: %s" % (status, response))
+    if status == 200 and "Successfully processed check result" in response["results"][0]["status"]:
+        rc = 0
+    else:
+        rc = 1
+            
     sys.exit(rc)
 
 
