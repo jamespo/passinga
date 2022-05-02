@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# passinga - quick icinga commandline status display
+# passinga - post passive check status to Icinga2
 # (C) James Powell jamespo [at] gmail [dot] com 2022
 # This software is licensed under the same terms as Python itself
 
@@ -8,19 +8,14 @@
 #  -X POST 'https://localhost:5665/v1/actions/process-check-result' \
 # -d '{ "type": "Service", "filter": "host.name==\"icinga2-master1.localdomain\" && service.name==\"passive-ping\"", "exit_status": 2, "plugin_output": "PING CRITICAL - Packet loss = 100%", "performance_data": [ "rta=5000.000000ms;3000.000000;5000.000000;0.000000", "pl=100%;80;100;0" ], "check_source": "example.localdomain", "pretty": true }'
 
-# from urlparse import urlparse
 import urllib3
 import configparser as ConfigParser
 import os.path
-from datetime import datetime
+import os
 from optparse import OptionParser
-from collections import defaultdict
 import logging
 import socket
-import ssl
 import sys
-import pprint
-import time
 import json
 
 logging.basicConfig()
@@ -35,10 +30,9 @@ def post_status(ic_url, user, pw, hostname, verify_ssl, checkopts):
                'Accept': 'application/json',
                "Content-Type": "application/json"}
     headers.update(urllib3.make_headers(basic_auth='%s:%s' % (user, pw)))
-    postdata = json.dumps({ "type": "Service",
+    postdata = json.dumps({ "type": "Service", "check_source": hostname,
                             "filter": 'host.name=="%s" && service.name=="%s"' % (hostname, checkopts.checkname),
                             "exit_status": checkopts.exitrc, "plugin_output": checkopts.exitoutput })
-    postdata = json.dumps({})
     logger.debug(postdata)
     logger.debug(headers)
     resp = http.request(
@@ -76,8 +70,10 @@ def get_options():
 
 
 def main():
-    #logger.setLevel(logging.INFO)
-    logger.setLevel(logging.DEBUG)
+    if os.getenv("PASSDEBUG"):
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.ERROR)
     checkopts = get_options()
     (icinga_url, username, password, hostname, verify_ssl) = readconf()
     data = post_status(icinga_url, username, password, hostname, verify_ssl, checkopts)
