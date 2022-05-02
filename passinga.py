@@ -21,50 +21,60 @@ import json
 logging.basicConfig()
 logger = logging.getLogger()
 
+
 def post_status(ic_url, user, pw, hostname, verify_ssl, checkopts):
-    '''posts icinga service check result to API and returns json'''
-    url = ic_url + '/v1/actions/process-check-result'
-    logger.debug('url: ' + url)
+    """posts icinga service check result to API and returns json"""
+    url = ic_url + "/v1/actions/process-check-result"
+    logger.debug("url: " + url)
     http = urllib3.PoolManager()
-    headers = {'User-agent': 'passinga',
-               'Accept': 'application/json',
-               "Content-Type": "application/json"}
-    headers.update(urllib3.make_headers(basic_auth='%s:%s' % (user, pw)))
-    postdata = json.dumps({ "type": "Service", "check_source": hostname,
-                            "filter": 'host.name=="%s" && service.name=="%s"' % (hostname, checkopts.checkname),
-                            "exit_status": checkopts.exitrc, "plugin_output": checkopts.exitoutput })
+    headers = {
+        "User-agent": "passinga",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    }
+    headers.update(urllib3.make_headers(basic_auth="%s:%s" % (user, pw)))
+    postdata = json.dumps(
+        {
+            "type": "Service",
+            "check_source": hostname,
+            "filter": 'host.name=="%s" && service.name=="%s"'
+            % (hostname, checkopts.checkname),
+            "exit_status": checkopts.exitrc,
+            "plugin_output": checkopts.exitoutput,
+        }
+    )
     logger.debug(postdata)
     logger.debug(headers)
-    resp = http.request(
-        "POST",
-        url,
-        headers=headers,
-        body=postdata)
+    resp = http.request("POST", url, headers=headers, body=postdata)
     logger.debug(resp.data)
     return resp.data
 
 
 def readconf():
-    '''read config file'''
+    """read config file"""
     config = ConfigParser.ConfigParser()
-    config.read(['/etc/passinga', os.path.expanduser('~/.config/.passinga')])
-    return (config.get('Main', 'icinga_url'), config.get('Main', 'username'),
-            config.get('Main', 'password'),
-            config.get('Main', 'hostname')
-            if config.has_option('Main', 'hostname') else socket.gethostname(),
-            config.getboolean('Main', 'verify_ssl')
-            if config.has_option('Main', 'verify_ssl') else True)
+    config.read(["/etc/passinga", os.path.expanduser("~/.config/.passinga")])
+    return (
+        config.get("Main", "icinga_url"),
+        config.get("Main", "username"),
+        config.get("Main", "password"),
+        config.get("Main", "hostname")
+        if config.has_option("Main", "hostname")
+        else socket.gethostname(),
+        config.getboolean("Main", "verify_ssl")
+        if config.has_option("Main", "verify_ssl")
+        else True,
+    )
 
 
 def get_options():
-    '''return CLI options'''
+    """return CLI options"""
     parser = OptionParser()
-    parser.add_option("-s", "--exitrc", help="Icinga exit rc (0-3)",
-                      dest="exitrc")
-    parser.add_option("-n", "--checkname", help="Name of check",
-                      dest="checkname")
-    parser.add_option("-o", "--exitoutput", help="exit output",
-                      dest="exitoutput", default='')
+    parser.add_option("-s", "--exitrc", help="Icinga exit rc (0-3)", dest="exitrc")
+    parser.add_option("-n", "--checkname", help="Name of check", dest="checkname")
+    parser.add_option(
+        "-o", "--exitoutput", help="exit output", dest="exitoutput", default=""
+    )
     opts, args = parser.parse_args()
     return opts
 
@@ -81,5 +91,5 @@ def main():
     sys.exit(rc)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
