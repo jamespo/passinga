@@ -89,11 +89,17 @@ def main():
     (icinga_url, username, password, hostname, verify_ssl) = readconf()
     status, response = post_status(icinga_url, username, password, hostname, verify_ssl, checkopts)
     logger.debug("Status: %s   Response: %s" % (status, response))
-    if status == 200 and "Successfully processed check result" in response["results"][0]["status"]:
-        rc = 0
+    errstr = ''
+    if status == 200:
+        if "Successfully processed check result" in response["results"][0]["status"]:
+            rc = 0
+        else:
+            rc = 1
+            errstr = response["results"][0]["status"]
     else:
         rc = 1
-            
+    if rc == 1:
+        print("Error: (%s) %s" % (status, errstr), file = sys.stderr)
     sys.exit(rc)
 
 
