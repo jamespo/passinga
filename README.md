@@ -1,8 +1,16 @@
 Passinga - Icinga 2 Passive Check Script
 ========================================
 
-Create a passive service in Icinga conf:
+## Setup ##
 
+Create an API user just with perms to push check results:
+
+	object ApiUser "icingaapi" {
+	   password = "3wdfkmslke"
+	  permissions = [ "actions/process-check-result" ]
+	}
+
+Create a passive service in Icinga conf:
 
 	apply Service "NinjaBackup" {
 			max_check_attempts = 1
@@ -18,12 +26,10 @@ Create a passive service in Icinga conf:
 			assign where host.vars.config.backuphost
 	}
 
-
 Pick it up in a host definition:
 
     // dbhost.yourdomain.com
     vars.config.backuphost = "1"
-
 
 Configure in /etc/passinga:
 
@@ -31,15 +37,20 @@ Configure in /etc/passinga:
 	icinga_url: https://icinga.yourdomain.com:5655
 	username: icingaapi
 	password: 3wdfkmslke
-	verify_ssl: on
+	# set to on if you trust the cert being presented
+	verify_ssl: off
 	hostname: dbhost.yourdomain.com
-
 
 And capture your job status / output and push to Icinga in a passive check:
 
-
 	BACKOUTPUT=$(/usr/bin/backupjob)
 	BACKSTATUS=$?
+	# set non-zero RC to Icinga WARNING (2 for CRITICAL)
 	if [[ $BACKSTATUS -ne 0 ]]; then BACKSTATUS=1; fi
 
 	passinga.py -n 'NinjaBackup' -o "$BACKOUTPUT" -s $BACKSTATUS
+
+
+## Notes ##
+
+* Pipe mode only works in Bash, you will need to specify shell in Debian/Ubuntu crontab as that defaults to dash ( https://wiki.ubuntu.com/DashAsBinSh#A.24PIPESTATUS ).
