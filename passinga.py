@@ -59,16 +59,13 @@ def readconf():
     config = ConfigParser.ConfigParser()
     config.read(["/etc/passinga", os.path.expanduser("~/.config/.passinga")])
     logger.debug('Conf: ' + str(dict(config.items('Main'))))
+    mainconf = config['Main']
     return (
-        config.get("Main", "icinga_url"),
-        config.get("Main", "username"),
-        config.get("Main", "password"),
-        config.get("Main", "hostname")
-        if config.has_option("Main", "hostname")
-        else socket.gethostname(),
-        config.getboolean("Main", "verify_ssl")
-        if config.has_option("Main", "verify_ssl")
-        else True,
+        mainconf.get("icinga_url"),
+        mainconf.get("username"),
+        mainconf.get("password"),
+        mainconf.get("hostname", socket.gethostname()),
+        mainconf.getboolean("verify_ssl", True)
     )
 
 
@@ -80,18 +77,23 @@ def get_options():
     parser.add_argument(
         "-o", "--exitoutput", help="exit output", dest="exitoutput", default=""
     )
+    parser.add_argument("-m", "--mode", choices=['stdin', 'ansible', 'cli'],
+                        default="cli")
     args = parser.parse_args()
+    logger.debug('args: ' + str(args))
     return args
 
 
 def main():
-    if os.getenv("PASSDEBUG"):
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.ERROR)
+    """get conf & checkresults & post to Icinga"""
     checkargs = get_options()
     (icinga_url, username, password, hostname, verify_ssl) = readconf()
-    status, response = post_status(icinga_url, username, password, hostname, verify_ssl, checkargs)
+    if checkargs.mode == 'cli':
+        status, response = post_status(icinga_url, username, password,
+                                       hostname, verify_ssl, checkargs)
+    else:
+        # TODO: handle other modes
+        raise ValueError
     logger.debug("Status: %s   Response: %s" % (status, response))
     errstr = ''
     if status == 200:
@@ -108,4 +110,9 @@ def main():
 
 
 if __name__ == "__main__":
+    """set loglevel & call main"""
+    if os.getenv("PASSDEBUG"):
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.ERROR)
     main()
