@@ -8,11 +8,15 @@
 #  -X POST 'https://localhost:5665/v1/actions/process-check-result' \
 # -d '{ "type": "Service", "filter": "host.name==\"icinga2-master1.localdomain\" && service.name==\"passive-ping\"", "exit_status": 2, "plugin_output": "PING CRITICAL - Packet loss = 100%", "performance_data": [ "rta=5000.000000ms;3000.000000;5000.000000;0.000000", "pl=100%;80;100;0" ], "check_source": "example.localdomain", "pretty": true }'
 
+# passinga git:(main) ✗ /usr/lib/monitoring-plugins/check_ping -H 1.1.1.1 -c 90%,95% -w 80%,90%
+# PING OK - Packet loss = 0%, RTA = 42.87 ms|rta=42.874001ms;80.000000;90.000000;0.000000 pl=0%;80;90;0
+
+
 import urllib3
 import configparser as ConfigParser
 import os.path
 import os
-from optparse import OptionParser
+from argparse import ArgumentParser
 import logging
 import socket
 import sys
@@ -22,7 +26,7 @@ logging.basicConfig()
 logger = logging.getLogger()
 
 
-def post_status(ic_url, user, pw, hostname, verify_ssl, checkopts):
+def post_status(ic_url, user, pw, hostname, verify_ssl, checkargs):
     """posts icinga service check result to API and returns json"""
     url = ic_url + "/v1/actions/process-check-result"
     logger.debug("url: " + url)
@@ -38,9 +42,9 @@ def post_status(ic_url, user, pw, hostname, verify_ssl, checkopts):
             "type": "Service",
             "check_source": hostname,
             "filter": 'host.name=="%s" && service.name=="%s"'
-            % (hostname, checkopts.checkname),
-            "exit_status": checkopts.exitrc,
-            "plugin_output": checkopts.exitoutput,
+            % (hostname, checkargs.checkname),
+            "exit_status": checkargs.exitrc,
+            "plugin_output": checkargs.exitoutput,
         }
     )
     logger.debug('Postdata: ' + postdata)
@@ -70,14 +74,14 @@ def readconf():
 
 def get_options():
     """return CLI options"""
-    parser = OptionParser()
-    parser.add_option("-s", "--exitrc", help="Icinga exit rc (0-3)", dest="exitrc")
-    parser.add_option("-n", "--checkname", help="Name of check", dest="checkname")
-    parser.add_option(
+    parser = ArgumentParser()
+    parser.add_argument("-s", "--exitrc", help="Icinga exit rc (0-3)", dest="exitrc")
+    parser.add_argument("-n", "--checkname", help="Name of check", dest="checkname")
+    parser.add_argument(
         "-o", "--exitoutput", help="exit output", dest="exitoutput", default=""
     )
-    opts, args = parser.parse_args()
-    return opts
+    args = parser.parse_args()
+    return args
 
 
 def main():
@@ -85,9 +89,9 @@ def main():
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.ERROR)
-    checkopts = get_options()
+    checkargs = get_options()
     (icinga_url, username, password, hostname, verify_ssl) = readconf()
-    status, response = post_status(icinga_url, username, password, hostname, verify_ssl, checkopts)
+    status, response = post_status(icinga_url, username, password, hostname, verify_ssl, checkargs)
     logger.debug("Status: %s   Response: %s" % (status, response))
     errstr = ''
     if status == 200:
