@@ -31,7 +31,7 @@ Pick it up in a host definition:
     // dbhost.yourdomain.com
     vars.config.backuphost = "1"
 
-Configure in /etc/passinga:
+Configure in /etc/passinga or ~/.config/.passinga:
 
 	[Main]
 	icinga_url: https://icinga.yourdomain.com:5655
@@ -39,18 +39,34 @@ Configure in /etc/passinga:
 	password: 3wdfkmslke
 	# set to on if you trust the cert being presented
 	verify_ssl: off
+	# this must match with the host configured for the check in Icinga
 	hostname: dbhost.yourdomain.com
 
-And capture your job status / output and push to Icinga in a passive check:
+
+## Usage ##
+
+### cli mode ###
+
+This is the default mode.
+
+Capture your job status / output and push to Icinga in a passive check:
 
 	BACKOUTPUT=$(/usr/bin/backupjob)
 	BACKSTATUS=$?
 	# set non-zero RC to Icinga WARNING (2 for CRITICAL)
 	if [[ $BACKSTATUS -ne 0 ]]; then BACKSTATUS=1; fi
 
-	passinga.py -n 'NinjaBackup' -o "$BACKOUTPUT" -s $BACKSTATUS
+	passinga.py -n 'NinjaBackup' -o "$BACKOUTPUT" -s $BACKSTATUS -f 1
+
+Note the "-f 1" flag - this "fixes" the returncode so that any code != 0 sets an Icinga RC of 1 (WARNING).
 
 
-## Notes ##
+### stdin mode ###
 
-* Pipe mode only works in Bash, you will need to specify shell in Debian/Ubuntu crontab as that defaults to dash ( https://wiki.ubuntu.com/DashAsBinSh#A.24PIPESTATUS ).
+This can be used in a one-liner to push the status of standard Icinga checks.
+
+    check_ping -H 2.2.2.2 -w 80,90% -c 90,100% | tee | passinga.py --mode stdin -s ${PIPESTATUS[0]} -n Ping
+
+(Intermediate tee step required to correctly capture returncode).
+
+stdin mode with PIPESTATUS special variable only works in Bash (or zsh with changes), you will need to specify shell in Debian/Ubuntu crontab as that defaults to dash ( https://wiki.ubuntu.com/DashAsBinSh#A.24PIPESTATUS ).
