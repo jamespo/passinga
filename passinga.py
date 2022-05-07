@@ -16,7 +16,7 @@ import urllib3
 import configparser as ConfigParser
 import os.path
 import os
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 import logging
 import socket
 import sys
@@ -26,25 +26,27 @@ logging.basicConfig()
 logger = logging.getLogger()
 
 
-def post_status(ic_url, user, pw, hostname, verify_ssl, checkargs):
+def post_status(conf: dict, cliargs: Namespace) -> tuple:
     """posts icinga service check result to API and returns json"""
-    url = ic_url + "/v1/actions/process-check-result"
-    logger.debug("url: " + url)
+    url = conf['url'] + "/v1/actions/process-check-result"
+    logger.debug("url: " + conf['url'])
     http = urllib3.PoolManager()
     headers = {
         "User-agent": "passinga",
         "Accept": "application/json",
         "Content-Type": "application/json",
     }
-    headers.update(urllib3.make_headers(basic_auth="%s:%s" % (user, pw)))
+    headers.update(urllib3.make_headers(basic_auth="%s:%s" % (conf['user'],
+                                                              conf['pw'])))
+    # TODO: set perfdata if available
     postdata = json.dumps(
         {
             "type": "Service",
-            "check_source": hostname,
+            "check_source": conf['host'],
             "filter": 'host.name=="%s" && service.name=="%s"'
-            % (hostname, checkargs.checkname),
-            "exit_status": checkargs.exitrc,
-            "plugin_output": checkargs.exitoutput,
+            % (conf['host'], cliargs.checkname),
+            "exit_status": cliargs.exitrc,
+            "plugin_output": cliargs.exitoutput,
         }
     )
     logger.debug('Postdata: ' + postdata)
@@ -54,31 +56,34 @@ def post_status(ic_url, user, pw, hostname, verify_ssl, checkargs):
     return resp.status, json.loads(resp.data)
 
 
-def readconf():
+def readconf() -> dict:
     """read config file"""
     config = ConfigParser.ConfigParser()
     config.read(["/etc/passinga", os.path.expanduser("~/.config/.passinga")])
     logger.debug('Conf: ' + str(dict(config.items('Main'))))
     mainconf = config['Main']
-    return (
-        mainconf.get("icinga_url"),
-        mainconf.get("username"),
-        mainconf.get("password"),
-        mainconf.get("hostname", socket.gethostname()),
-        mainconf.getboolean("verify_ssl", True)
-    )
+    return {
+        'url': mainconf.get("icinga_url"),
+        'user': mainconf.get("username"),
+        'pw': mainconf.get("password"),
+        'host': mainconf.get("hostname", socket.gethostname()),
+        'v_ssl': mainconf.getboolean("verify_ssl", True)
+    }
 
 
-def get_options():
+def get_options() -> Namespace:
     """return CLI options"""
     parser = ArgumentParser()
-    parser.add_argument("-s", "--exitrc", help="Icinga exit rc (0-3)", dest="exitrc")
+    parser.add_argument("-s", "--exitrc", help="Icinga exit rc (0-3)",
+                        dest="exitrc", type=int, choices=range(4))
     parser.add_argument("-n", "--checkname", help="Name of check", dest="checkname")
     parser.add_argument(
         "-o", "--exitoutput", help="exit output", dest="exitoutput", default=""
     )
     parser.add_argument("-m", "--mode", choices=['stdin', 'ansible', 'cli'],
                         default="cli")
+    parser.add_argument("-f", "--fixrc", help="if exitrc non-zero value to send (1-3)",
+                        dest="fixrc", type=int, choices=range(1, 4))
     args = parser.parse_args()
     logger.debug('args: ' + str(args))
     return args
@@ -86,26 +91,24 @@ def get_options():
 
 def main():
     """get conf & checkresults & post to Icinga"""
-    checkargs = get_options()
-    (icinga_url, username, password, hostname, verify_ssl) = readconf()
-    if checkargs.mode == 'cli':
-        status, response = post_status(icinga_url, username, password,
-                                       hostname, verify_ssl, checkargs)
-    else:
-        # TODO: handle other modes
-        raise ValueError
+    cliargs = get_options()
+    conf = readconf()
+    if cliargs.fixrc and cliargs.exitrc != 0:
+        cliargs.exitrc = cliargs.fixrc
+    if cliargs.mode == 'stdin':
+        # get exitoutput from stdin
+        cliargs.exitoutput = sys.stdin.read()
+    status, response = post_status(conf, cliargs)
     logger.debug("Status: %s   Response: %s" % (status, response))
     errstr = ''
+    rc = 1
     if status == 200:
         if "Successfully processed check result" in response["results"][0]["status"]:
             rc = 0
         else:
-            rc = 1
             errstr = response["results"][0]["status"]
-    else:
-        rc = 1
     if rc == 1:
-        print("Error: (%s) %s" % (status, errstr), file = sys.stderr)
+        print("Error: (%s) %s" % (status, errstr), file=sys.stderr)
     sys.exit(rc)
 
 
