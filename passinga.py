@@ -30,6 +30,8 @@ def post_status(conf: dict, cliargs: Namespace) -> tuple:
     """posts icinga service check result to API and returns json"""
     url = conf['url'] + "/v1/actions/process-check-result"
     logger.debug("url: " + conf['url'])
+    if not conf['v_ssl']:
+        urllib3.disable_warnings()  # don't verify ssl
     http = urllib3.PoolManager()
     headers = {
         "User-agent": "passinga",
