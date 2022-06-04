@@ -26,7 +26,13 @@ logging.basicConfig()
 logger = logging.getLogger()
 
 
-def post_status(conf: dict, cliargs: Namespace) -> tuple:
+def fail_msg(msg, rc=1):
+    """output error msg to stdout & quit with rc"""
+    print(msg, file=sys.stderr)
+    sys.exit(rc)
+    
+
+def post_status(conf: dict, cliargs: Namespace) -> tuple[int, dict]:
     """posts icinga service check result to API and returns json"""
     url = conf['url'] + "/v1/actions/process-check-result"
     logger.debug("url: " + conf['url'])
@@ -56,6 +62,25 @@ def post_status(conf: dict, cliargs: Namespace) -> tuple:
     resp = http.request("POST", url, headers=headers, body=postdata)
     logger.debug('Response: ' + str(resp.data))
     return resp.status, json.loads(resp.data)
+
+
+def proc_ansible(ansioutput: str) -> tuple[str, int]:
+    """process ansible JSON response"""
+    try:
+        ansi_results = json.loads(ansioutput)
+    except json.decoder.JSONDecodeError:
+        logger.debug("Ansible output: %s" % ansioutput)
+        fail_msg('Ansible JSON decoding failed')
+    error_hosts = []
+    stats = ansi_results['stats']
+    for host in stats:
+        if 1 in (stats[host]['failures'], stats[host]['unreachable']):
+            error_hosts.append(host)
+    if error_hosts:
+        errstr = "Ansible Failed hosts: %s" % " ".join(error_hosts)
+        return errstr, 1
+    # all ok
+    return 'Ansible Playbook Success', 0
 
 
 def readconf() -> dict:
@@ -100,17 +125,21 @@ def main():
     if cliargs.mode == 'stdin':
         # get exitoutput from stdin
         cliargs.exitoutput = sys.stdin.read()
+    elif cliargs.mode == 'ansible':
+        # process JSON output from ansible
+        cliargs.exitoutput, cliargs.exitrc = proc_ansible(sys.stdin.read())
     status, response = post_status(conf, cliargs)
     logger.debug("Status: %s   Response: %s" % (status, response))
     errstr = ''
     rc = 1
+    # quit with error if no status 200 or Success msg in response from Icinga
     if status == 200:
         if "Successfully processed check result" in response["results"][0]["status"]:
             rc = 0
         else:
             errstr = response["results"][0]["status"]
     if rc == 1:
-        print("Error: (%s) %s" % (status, errstr), file=sys.stderr)
+        fail_msg("Error from Icinga: (%s) %s" % (status, errstr))
     sys.exit(rc)
 
 
