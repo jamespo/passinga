@@ -32,7 +32,7 @@ def fail_msg(msg, rc=1):
     sys.exit(rc)
     
 
-def post_status(conf: dict, cliargs: Namespace) -> tuple[int, dict]:
+def post_status(conf: dict, cliargs: Namespace) -> tuple:
     """posts icinga service check result to API and returns json"""
     url = conf['url'] + "/v1/actions/process-check-result"
     logger.debug("url: " + conf['url'])
@@ -64,7 +64,7 @@ def post_status(conf: dict, cliargs: Namespace) -> tuple[int, dict]:
     return resp.status, json.loads(resp.data)
 
 
-def proc_ansible(ansioutput: str) -> tuple[str, int]:
+def proc_ansible(ansioutput: str) -> tuple:
     """process ansible JSON response"""
     try:
         ansi_results = json.loads(ansioutput)
