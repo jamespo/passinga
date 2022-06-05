@@ -1,6 +1,12 @@
 Passinga - Icinga 2 Passive Check Script
 ========================================
 
+## Install ##
+
+Copy passinga.py into your path.
+
+Requirements: Python 3.6+ & [urllib3](https://pypi.org/project/urllib3/) module.
+
 ## Setup ##
 
 Create an API user just with perms to push check results:
@@ -45,6 +51,21 @@ Configure in /etc/passinga or ~/.config/.passinga:
 
 ## Usage ##
 
+	usage: passinga.py [-h] [-s {0,1,2,3}] [-n CHECKNAME] [-o EXITOUTPUT] [-m {stdin,ansible,cli}] [-f {1,2,3}]
+	
+	options:
+	  -h, --help            show this help message and exit
+	  -s {0,1,2,3}, --exitrc {0,1,2,3}
+	                        Icinga exit rc (0-3)
+	  -n CHECKNAME, --checkname CHECKNAME
+	                        Name of check
+	  -o EXITOUTPUT, --exitoutput EXITOUTPUT
+	                        exit output
+	  -m {stdin,ansible,cli}, --mode {stdin,ansible,cli}
+	  -f {1,2,3}, --fixrc {1,2,3}
+	                        if exitrc non-zero value to send (1-3)
+	
+
 ### cli mode ###
 
 This is the default mode.
@@ -53,9 +74,6 @@ Capture your job status / output and push to Icinga in a passive check:
 
 	BACKOUTPUT=$(/usr/bin/backupjob)
 	BACKSTATUS=$?
-	# set non-zero RC to Icinga WARNING (2 for CRITICAL)
-	if [[ $BACKSTATUS -ne 0 ]]; then BACKSTATUS=1; fi
-
 	passinga.py -n 'NinjaBackup' -o "$BACKOUTPUT" -s $BACKSTATUS -f 1
 
 Note the "-f 1" flag - this "fixes" the returncode so that any code != 0 sets an Icinga RC of 1 (WARNING).
@@ -70,3 +88,17 @@ This can be used in a one-liner to push the status of standard Icinga checks.
 (Intermediate tee step required to correctly capture returncode).
 
 stdin mode with PIPESTATUS special variable only works in Bash (or zsh with changes), you will need to specify shell in Debian/Ubuntu crontab as that defaults to dash ( https://wiki.ubuntu.com/DashAsBinSh#A.24PIPESTATUS ).
+
+### ansible mode ###
+
+Parse the results of ansible playbooks and push to icinga:
+
+    ANSIBLE_CALLBACK_WHITELIST=json ANSIBLE_STDOUT_CALLBACK=json ansible-playbook mwsync.yml \
+        | tee | passinga.py --mode ansible -n "MediaWiki Sync"
+        
+A helper script "icansirun" is included suitable for cron etc which you can use as below:
+
+    CHECKNAME=backup ANSIBLE_CONFIG=/home/ansiman/conf/ansible.cfg icansirun playbook.yml
+
+
+
