@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# icansirun - run ansible-playbook & post results to icinga
+# (c) jamespo [at] gmail [dot] com 2022
+
+# USAGE: CHECKNAME=backup ANSIBLE_CONFIG=/home/ansiman/conf/ansible.cfg icansirun playbook.yml
+
+PLAYBOOK="$1"
+
+if [[ $PLAYBOOK == "" ]]; then
+   echo "No playbook supplied"
+   exit 1
+fi
+
+if [[ -z "$CHECKNAME" ]]; then
+   echo "No check name supplied"
+   exit 1
+fi
+
+# ensure passinga.py & ansible-playbook are in this path
+export PATH=/usr/local/bin:$PATH
+
+ANSIBLE_CALLBACK_WHITELIST=json ANSIBLE_STDOUT_CALLBACK=json ansible-playbook $PLAYBOOK \
+    | tee | passinga.py --mode ansible -n "$CHECKNAME"
+
