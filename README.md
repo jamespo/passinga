@@ -55,8 +55,8 @@ Configure in /etc/passinga or ~/.config/.passinga:
 	
 	options:
 	  -h, --help            show this help message and exit
-	  -s {0,1,2,3}, --exitrc {0,1,2,3}
-	                        Icinga exit rc (0-3)
+	  -s EXITRC, --exitrc EXITRC
+	                        parent rc to pass in
 	  -n CHECKNAME, --checkname CHECKNAME
 	                        Name of check
 	  -o EXITOUTPUT, --exitoutput EXITOUTPUT

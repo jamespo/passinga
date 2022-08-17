@@ -101,8 +101,8 @@ def readconf() -> dict:
 def get_options() -> Namespace:
     """return CLI options"""
     parser = ArgumentParser()
-    parser.add_argument("-s", "--exitrc", help="Icinga exit rc (0-3)",
-                        dest="exitrc", type=int, choices=range(4))
+    parser.add_argument("-s", "--exitrc", help="parent rc to pass in",
+                        dest="exitrc", type=int)
     parser.add_argument("-n", "--checkname", help="Name of check", dest="checkname")
     parser.add_argument(
         "-o", "--exitoutput", help="exit output", dest="exitoutput", default=""
@@ -110,7 +110,7 @@ def get_options() -> Namespace:
     parser.add_argument("-m", "--mode", choices=['stdin', 'ansible', 'cli'],
                         default="cli")
     parser.add_argument("-f", "--fixrc", help="if exitrc non-zero value to send (1-3)",
-                        dest="fixrc", type=int, choices=range(1, 4))
+                        dest="fixrc", type=int, choices=range(1, 4), default=2)
     args = parser.parse_args()
     logger.debug('args: ' + str(args))
     return args
