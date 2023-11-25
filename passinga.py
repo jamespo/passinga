@@ -30,15 +30,19 @@ def fail_msg(msg, rc=1):
     """output error msg to stdout & quit with rc"""
     print(msg, file=sys.stderr)
     sys.exit(rc)
-    
+
 
 def post_status(conf: dict, cliargs: Namespace) -> tuple:
     """posts icinga service check result to API and returns json"""
     url = conf['url'] + "/v1/actions/process-check-result"
     logger.debug("url: " + conf['url'])
-    if not conf['v_ssl']:
-        urllib3.disable_warnings()  # don't verify ssl
-    http = urllib3.PoolManager()
+    if conf['v_ssl']:
+        http = urllib3.PoolManager()
+    else:
+        # don't verify ssl
+        logger.debug("Not verifying SSL")
+        urllib3.disable_warnings()
+        http = urllib3.PoolManager(cert_reqs='CERT_NONE')
     headers = {
         "User-agent": "passinga",
         "Accept": "application/json",
@@ -103,7 +107,8 @@ def get_options() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument("-s", "--exitrc", help="parent rc to pass in",
                         dest="exitrc", type=int)
-    parser.add_argument("-n", "--checkname", help="Name of check", dest="checkname")
+    parser.add_argument("-n", "--checkname",
+                        help="Name of check", dest="checkname")
     parser.add_argument(
         "-o", "--exitoutput", help="exit output", dest="exitoutput", default=""
     )
