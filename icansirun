@@ -20,6 +20,6 @@ fi
 # ensure passinga.py & ansible-playbook are in this path
 export PATH=/usr/local/bin:$PATH
 
-ANSIBLE_CALLBACK_WHITELIST=json ANSIBLE_STDOUT_CALLBACK=json ansible-playbook $PLAYBOOK \
+ANSIBLE_CALLBACKS_ENABLED=json ANSIBLE_STDOUT_CALLBACK=json ansible-playbook $PLAYBOOK \
     | tee | passinga.py --mode ansible -n "$CHECKNAME"
 

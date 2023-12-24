@@ -93,7 +93,7 @@ stdin mode with PIPESTATUS special variable only works in Bash (or zsh with chan
 
 Parse the results of ansible playbooks and push to icinga:
 
-    ANSIBLE_CALLBACK_WHITELIST=json ANSIBLE_STDOUT_CALLBACK=json ansible-playbook mwsync.yml \
+    ANSIBLE_CALLBACKS_ENABLED=json ANSIBLE_STDOUT_CALLBACK=json ansible-playbook mwsync.yml \
         | tee | passinga.py --mode ansible -n "MediaWiki Sync"
         
 A helper script "icansirun" is included suitable for cron etc which you can use as below:
