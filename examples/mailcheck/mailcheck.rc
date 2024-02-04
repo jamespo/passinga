@@ -1,0 +1,9 @@
+# -*- mode: conf -*-
+# mailcheck.rc: procmail recipe to go with mailcheck.sh
+
+:0
+* ^Subject:.*JPMAILCHECK
+{
+        :0
+         | /usr/local/bin/mailcheck.sh
+}
