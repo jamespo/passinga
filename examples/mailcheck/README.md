@@ -9,7 +9,7 @@ Setup
 
 1. Create an icinga passive check:
 
-	apply Service "mail_relay_" for (mailrelay in host.vars.mailrelays) {
+       apply Service "mail_relay_" for (mailrelay in host.vars.mailrelays) {
 			max_check_attempts = 1
 			check_interval = 7h
 			vars.notification_interval = 8h
@@ -23,7 +23,7 @@ Setup
 			display_name = "Mail Relay (" + mailrelay + ")"
 
 			assign where host.vars.mailrelays
-	}
+       }
 
 mailrelays is an array of email address (eg testmail@hotmail.com) you want to check aren't blacklisting you
 
