@@ -35,14 +35,16 @@ def fail_msg(msg, rc=1):
 def post_status(conf: dict, cliargs: Namespace) -> tuple:
     """posts icinga service check result to API and returns json"""
     url = conf['url'] + "/v1/actions/process-check-result"
+    timeout = urllib3.Timeout(total=10.0)
     logger.debug("url: " + conf['url'])
     if conf['v_ssl']:
-        http = urllib3.PoolManager()
+        http = urllib3.PoolManager(timeout=timeout)
     else:
         # don't verify ssl
         logger.debug("Not verifying SSL")
         urllib3.disable_warnings()
-        http = urllib3.PoolManager(cert_reqs='CERT_NONE')
+        http = urllib3.PoolManager(cert_reqs='CERT_NONE',
+                                   timeout=timeout)
     headers = {
         "User-agent": "passinga",
         "Accept": "application/json",
