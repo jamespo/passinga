@@ -13,7 +13,7 @@ Create an API user just with perms to push check results:
 
 	object ApiUser "icingaapi" {
 	   password = "3wdfkmslke"
-	  permissions = [ "actions/process-check-result" ]
+	   permissions = [ "actions/process-check-result" ]
 	}
 
 Create a passive service in Icinga conf:
@@ -81,13 +81,14 @@ Note the "-f 1" flag - this "fixes" the returncode so that any code != 0 sets an
 
 ### stdin mode ###
 
-This can be used in a one-liner to push the status of standard Icinga checks.
+This can be used to push the status of standard Icinga checks.
 
-    check_ping -H 2.2.2.2 -w 80,90% -c 90,100% | tee | passinga.py --mode stdin -s ${PIPESTATUS[0]} -n Ping
+    PINGSTATUS=$(mktemp)
+    check_ping -H 2.2.2.2 -w 80,90% -c 90,100% > $PINGSTATUS
+    cat $PINGSTATUS | passinga.py --mode stdin -s $? -n Ping
+    rm $PINGSTATUS
 
-(Intermediate tee step required to correctly capture returncode).
-
-stdin mode with PIPESTATUS special variable only works in Bash (or zsh with changes), you will need to specify shell in Debian/Ubuntu crontab as that defaults to dash ( https://wiki.ubuntu.com/DashAsBinSh#A.24PIPESTATUS ).
+Intermediate step required to capture $?
 
 ### ansible mode ###
 
